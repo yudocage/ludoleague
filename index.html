@@ -356,7 +356,7 @@ document.body.classList.toggle('is-admin', isAdmin);
 const RULES_TEXT = `1. Взнос и призовой фонд
 Каждый участник вносит 20 €. Все взносы образуют призовой фонд. Пара-победитель лиги забирает весь фонд целиком. Второго места нет: всё или ничего.
 
-2. Сроки<
+2. Сроки
 Лига длится два месяца. Все матчи должны быть сыграны до 30 ноября включительно.
 
 3. Порядок матчей
@@ -520,7 +520,9 @@ toggleSetupBtn.addEventListener('click', () => {
 /* ---- Rules modal ---- */
 const rulesOverlay = document.getElementById('rulesOverlay');
 function formatRuleLine(l) {
-  return escapeHtml(l).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  const escaped = escapeHtml(l).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  const isHeading = /^\d+\.\s+\S/.test(l.trim());
+  return isHeading ? `<strong>${escaped}</strong>` : escaped;
 }
 document.getElementById('rulesText').innerHTML = RULES_TEXT.split('\n').map(l => `<p>${formatRuleLine(l)}</p>`).join('');
 document.getElementById('rulesBtn').addEventListener('click', () => rulesOverlay.classList.add('open'));
