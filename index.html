@@ -354,7 +354,7 @@
   нужна авторизация через Firebase Auth — отдельная настройка.
   ============================================================
 */
-const ADMIN_KEY = yudo1337;
+const ADMIN_KEY = "yudo1337";
 const isAdmin = decodeURIComponent(location.hash.slice(1)) === ADMIN_KEY;
 document.body.classList.toggle('is-admin', isAdmin);
 
