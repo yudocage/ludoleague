@@ -232,7 +232,7 @@
     border: 1px solid var(--line);
     border-radius: 12px;
     padding: 24px;
-    max-width: 560px;
+    max-width: 480px;
     width: 100%;
     max-height: 80vh;
     overflow-y: auto;
@@ -247,16 +247,6 @@
     color: var(--gold);
   }
   .modal-box p { font-size: 14px; line-height: 1.6; color: var(--text); margin: 0 0 10px; }
-  .modal-box h3 {
-    font-family: 'Oswald', sans-serif;
-    font-size: 14px;
-    font-weight: 600;
-    text-transform: uppercase;
-    letter-spacing: .04em;
-    color: var(--gold);
-    margin: 18px 0 6px;
-  }
-  .modal-box h3:first-child { margin-top: 0; }
   .modal-close {
     position: absolute;
     top: 14px;
@@ -359,31 +349,10 @@ const isAdmin = decodeURIComponent(location.hash.slice(1)) === ADMIN_KEY;
 document.body.classList.toggle('is-admin', isAdmin);
 
 /*
-  ПРАВИЛА — текст ниже появляется во всплывающем окне по кнопке «Правила».
-  Каждая строка — отдельный абзац; строка, начинающаяся с «## », — заголовок пункта.
+  ПРАВИЛА — впиши текст ниже (можно с переносами строк), он появится
+  во всплывающем окне по кнопке «Правила».
 */
-const RULES_TEXT = `## 1. Взнос и призовой фонд
-Каждый участник вносит 20 € до начала лиги. Все взносы образуют призовой фонд. Пара-победитель лиги забирает весь фонд целиком. Второго места нет: всё или ничего.
-## 2. Сроки
-Лига длится два месяца. Все матчи должны быть сыграны до 30 ноября включительно.
-## 3. Порядок матчей
-Матчи проводятся строго по турам. Матч следующего тура можно играть только после того, как сыгран свой матч текущего тура.
-## 4. Организация матча
-Пары сами договариваются с соперниками о дате, времени и месте проведения матча.
-## 5. Формат матча
-Матч играется до двух выигранных сетов (из трёх). Если после двух сетов счёт 1:1, играется полноценный третий сет по тем же правилам.
-## 6. Счёт в гейме
-Счёт внутри гейма как в теннисе: 0, 15, 30, 40, гейм.
-При счёте 40:40 действует правило Golden Point: следующее очко решает гейм, «больше» не играется.
-Решающую подачу принимает пара, которая принимает в этом гейме. Она сама выбирает, с какой стороны (справа или слева) принимать. Игроки при этом не меняются своими обычными позициями приёма, то есть пара просто выбирает, кто из двоих будет отбивать подачу.
-## 7. Сет и тай-брейк
-Сет выигрывает пара, первой взявшая 6 геймов с разницей минимум в 2 гейма.
-При счёте 5:5 играются ещё два гейма. Если одна пара выигрывает оба, сет заканчивается со счётом 7:5.
-При счёте 6:6 играется тай-брейк. Тай-брейк продолжается, пока одна из пар не наберёт 7 очков или больше с преимуществом минимум в 2 очка. Сет, выигранный на тай-брейке, записывается как 7:6. Следующий сет начинает подавать игрок той пары, которая не начинала подачу в тай-брейке.
-## 8. Смена сторон и перерывы
-Пары меняются сторонами после 1-го, 3-го и каждого следующего нечётного гейма в сете. В тай-брейке стороны меняются каждые 6 очков.
-Если смену сторон пропустили, её делают сразу, как только заметили ошибку. Уже сыгранные очки остаются в силе.
-Отдых между геймами при смене сторон не более 90 секунд. После первого гейма сета и во время тай-брейка отдыха нет.`;
+const RULES_TEXT = `Правила турнира скоро появятся здесь.`;
 
 const firebaseConfig = {
   apiKey: "AIzaSyDZfWg7hkBw6tL3MQpg7bP4uAPCwZzVk1g",
@@ -517,7 +486,7 @@ toggleSetupBtn.addEventListener('click', () => {
 
 /* ---- Rules modal ---- */
 const rulesOverlay = document.getElementById('rulesOverlay');
-document.getElementById('rulesText').innerHTML = RULES_TEXT.split('\n').filter(l => l.trim()).map(l => l.startsWith('## ') ? `<h3>${escapeHtml(l.slice(3))}</h3>` : `<p>${escapeHtml(l)}</p>`).join('');
+document.getElementById('rulesText').innerHTML = RULES_TEXT.split('\n').map(l => `<p>${escapeHtml(l)}</p>`).join('');
 document.getElementById('rulesBtn').addEventListener('click', () => rulesOverlay.classList.add('open'));
 document.getElementById('rulesClose').addEventListener('click', () => rulesOverlay.classList.remove('open'));
 rulesOverlay.addEventListener('click', e => { if (e.target === rulesOverlay) rulesOverlay.classList.remove('open'); });
@@ -531,39 +500,41 @@ function setWinner(set) {
 }
 
 function matchStats(match) {
-  let hSets = 0, aSets = 0;
+  let hSets = 0, aSets = 0, hGames = 0, aGames = 0;
   (match.sets || []).forEach(s => {
     const w = setWinner(s);
-    if (w === 1) hSets++;
-    else if (w === -1) aSets++;
+    if (w === 1) { hSets++; hGames += Number(s.h); aGames += Number(s.a); }
+    else if (w === -1) { aSets++; hGames += Number(s.h); aGames += Number(s.a); }
   });
   const decided = hSets >= 2 || aSets >= 2;
-  return { hSets, aSets, decided };
+  return { hSets, aSets, hGames, aGames, decided };
 }
 
 function computeStandings() {
   const table = {};
-  state.teams.forEach(t => { table[t] = { pl: 0, w: 0, l: 0, sw: 0, sl: 0, pts: 0 }; });
+  state.teams.forEach(t => { table[t] = { pl: 0, w: 0, l: 0, sw: 0, sl: 0, gw: 0, gl: 0, pts: 0 }; });
   state.matches.forEach(m => {
-    const { hSets, aSets, decided } = matchStats(m);
+    const { hSets, aSets, hGames, aGames, decided } = matchStats(m);
     if (!decided) return;
     const h = table[m.home], a = table[m.away];
     h.pl++; a.pl++;
     h.sw += hSets; h.sl += aSets;
     a.sw += aSets; a.sl += hSets;
+    h.gw += hGames; h.gl += aGames;
+    a.gw += aGames; a.gl += hGames;
     if (hSets > aSets) { h.w++; h.pts += 1; a.l++; }
     else { a.w++; a.pts += 1; h.l++; }
   });
   return Object.entries(table)
-    .map(([name, s]) => ({ name, ...s, sd: s.sw - s.sl }))
-    .sort((x, y) => y.pts - x.pts || y.sd - x.sd || y.sw - x.sw || x.name.localeCompare(y.name));
+    .map(([name, s]) => ({ name, ...s, gd: s.gw - s.gl }))
+    .sort((x, y) => y.pts - x.pts || y.gd - x.gd || y.gw - x.gw || x.name.localeCompare(y.name));
 }
 
 function renderStandings() {
   const standings = computeStandings();
-  let html = '<table><thead><tr><th></th><th>Команда</th><th class="num">И</th><th class="num">В</th><th class="num">П</th><th class="num">РС</th><th class="num">О</th></tr></thead><tbody>';
+  let html = '<table><thead><tr><th></th><th>Команда</th><th class="num">И</th><th class="num">В</th><th class="num">П</th><th class="num">РГ</th><th class="num">О</th></tr></thead><tbody>';
   standings.forEach((s, i) => {
-    html += `<tr class="${i === 0 && s.pl > 0 ? 'leader' : ''}"><td class="rank">${i + 1}</td><td class="name">${escapeHtml(s.name)}</td><td class="num">${s.pl}</td><td class="num">${s.w}</td><td class="num">${s.l}</td><td class="num">${s.sd >= 0 ? '+' : ''}${s.sd}</td><td class="num pts">${s.pts}</td></tr>`;
+    html += `<tr class="${i === 0 && s.pl > 0 ? 'leader' : ''}"><td class="rank">${i + 1}</td><td class="name">${escapeHtml(s.name)}</td><td class="num">${s.pl}</td><td class="num">${s.w}</td><td class="num">${s.l}</td><td class="num">${s.gd >= 0 ? '+' : ''}${s.gd}</td><td class="num pts">${s.pts}</td></tr>`;
   });
   html += '</tbody></table>';
   document.getElementById('standingsTable').innerHTML = `<div class="reveal">${html}</div>`;
