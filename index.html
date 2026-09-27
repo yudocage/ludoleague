@@ -247,6 +247,7 @@
     color: var(--gold);
   }
   .modal-box p { font-size: 14px; line-height: 1.6; color: var(--text); margin: 0 0 10px; }
+  .modal-box p strong { color: var(--gold); font-weight: 700; }
   .modal-close {
     position: absolute;
     top: 14px;
@@ -518,7 +519,10 @@ toggleSetupBtn.addEventListener('click', () => {
 
 /* ---- Rules modal ---- */
 const rulesOverlay = document.getElementById('rulesOverlay');
-document.getElementById('rulesText').innerHTML = RULES_TEXT.split('\n').map(l => `<p>${escapeHtml(l)}</p>`).join('');
+function formatRuleLine(l) {
+  return escapeHtml(l).replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+}
+document.getElementById('rulesText').innerHTML = RULES_TEXT.split('\n').map(l => `<p>${formatRuleLine(l)}</p>`).join('');
 document.getElementById('rulesBtn').addEventListener('click', () => rulesOverlay.classList.add('open'));
 document.getElementById('rulesClose').addEventListener('click', () => rulesOverlay.classList.remove('open'));
 rulesOverlay.addEventListener('click', e => { if (e.target === rulesOverlay) rulesOverlay.classList.remove('open'); });
