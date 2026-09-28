@@ -180,6 +180,7 @@
   .team { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .team.away { text-align: right; }
   .team.winner { color: var(--gold); font-weight: 600; }
+  .team svg.crown { margin-right: 4px; vertical-align: -1px; }
   .final-score {
     font-family: 'IBM Plex Mono', monospace;
     font-weight: 600;
@@ -188,8 +189,35 @@
     text-align: center;
     min-width: 40px;
   }
+  .schedule-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 5px;
+    margin-bottom: 8px;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+  }
+  .schedule-row .sched-icon { font-size: 11px; opacity: .7; }
+  .schedule-row .sep { color: var(--muted-2); }
+  .schedule-row input {
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-family: inherit;
+    font-size: 12px;
+    padding: 2px 1px;
+    text-align: center;
+  }
+  .schedule-row input.filled { color: var(--gold); font-weight: 600; }
+  .schedule-row input:disabled { cursor: default; }
+  .schedule-row input[data-field="place"] { width: 90px; text-align: left; }
+  .schedule-row input[data-field="date"] { width: 120px; }
+  .schedule-row input::placeholder { color: var(--muted-2); }
   .sets-row { display: flex; justify-content: center; gap: 10px; }
   .set { display: flex; align-items: center; gap: 4px; }
+  .set:not(:first-child) { border-left: 1px solid var(--line); padding-left: 10px; }
   .set input {
     width: 28px;
     height: 28px;
@@ -474,7 +502,7 @@ function generateRoundRobin(teamNames, doubleRound) {
   let id = 0;
   allRounds.forEach((round, ri) => {
     round.forEach(m => {
-      matches.push({ id: 'm' + (id++), round: ri + 1, home: m.home, away: m.away, sets: emptySets() });
+      matches.push({ id: 'm' + (id++), round: ri + 1, home: m.home, away: m.away, sets: emptySets(), place: '', date: '' });
     });
   });
   return matches;
@@ -585,11 +613,19 @@ function matchCardHtml(m) {
       <span>:</span>
       <input type="number" min="0" max="7" value="${s.a}" data-id="${m.id}" data-set="${i}" data-side="a" ${isAdmin ? '' : 'disabled'}>
     </div>`).join('');
+  const hasSchedule = isAdmin || m.place || m.date;
+  const scheduleHtml = hasSchedule ? `<div class="schedule-row">
+      <span class="sched-icon">📍</span><input type="text" placeholder="место" class="${m.place ? 'filled' : ''}" value="${escapeHtml(m.place || '')}" data-id="${m.id}" data-field="place" ${isAdmin ? '' : 'disabled'}>
+      <span class="sep">·</span>
+      <span class="sched-icon">🗓</span><input type="text" placeholder="дата и время" class="${m.date ? 'filled' : ''}" value="${escapeHtml(m.date || '')}" data-id="${m.id}" data-field="date" ${isAdmin ? '' : 'disabled'}>
+    </div>` : '';
+  const crown = '<svg class="crown" viewBox="0 0 24 16" width="14" height="10"><path d="M2 14L0 4l5 3 5-6 5 6 5-3-2 10H2z" fill="var(--red)"/></svg>';
   return `<div class="match-card" id="match-${m.id}">
+    ${scheduleHtml}
     <div class="match-teams">
-      <span class="team home${homeWin ? ' winner' : ''}">${escapeHtml(m.home)}</span>
+      <span class="team home${homeWin ? ' winner' : ''}">${homeWin ? crown : ''}${escapeHtml(m.home)}</span>
       <span class="final-score">${scoreLabel}</span>
-      <span class="team away${awayWin ? ' winner' : ''}">${escapeHtml(m.away)}</span>
+      <span class="team away${awayWin ? ' winner' : ''}">${awayWin ? crown : ''}${escapeHtml(m.away)}</span>
     </div>
     <div class="sets-row">${setsHtml}</div>
   </div>`;
@@ -602,9 +638,14 @@ function updateMatchDisplay(match) {
   const homeWin = decided && hSets > aSets;
   const awayWin = decided && aSets > hSets;
   const anyEntered = (match.sets || []).some(s => s.h !== '' || s.a !== '');
+  const crown = '<svg class="crown" viewBox="0 0 24 16" width="14" height="10"><path d="M2 14L0 4l5 3 5-6 5 6 5-3-2 10H2z" fill="var(--red)"/></svg>';
   row.querySelector('.final-score').textContent = anyEntered ? `${hSets}:${aSets}` : '– : –';
-  row.querySelector('.team.home').classList.toggle('winner', homeWin);
-  row.querySelector('.team.away').classList.toggle('winner', awayWin);
+  const homeEl = row.querySelector('.team.home');
+  const awayEl = row.querySelector('.team.away');
+  homeEl.classList.toggle('winner', homeWin);
+  homeEl.innerHTML = (homeWin ? crown : '') + escapeHtml(match.home);
+  awayEl.classList.toggle('winner', awayWin);
+  awayEl.innerHTML = (awayWin ? crown : '') + escapeHtml(match.away);
 }
 
 function render() {
@@ -652,6 +693,19 @@ function render() {
       match.sets[setIdx][side] = e.target.value;
       updateMatchDisplay(match);
       renderStandings();
+      saveState();
+    });
+  });
+
+  document.querySelectorAll('.schedule-row input').forEach(inp => {
+    inp.addEventListener('input', e => {
+      if (!isAdmin) return;
+      const id = e.target.getAttribute('data-id');
+      const field = e.target.getAttribute('data-field');
+      const match = state.matches.find(m => m.id === id);
+      if (!match) return;
+      match[field] = e.target.value;
+      e.target.classList.toggle('filled', !!e.target.value);
       saveState();
     });
   });
