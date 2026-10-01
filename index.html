@@ -625,17 +625,25 @@ function legHtml(m) {
 }
 
 function groupMatches(matches) {
+  const used = new Set();
   const groups = [];
-  let i = 0;
-  while (i < matches.length) {
+  for (let i = 0; i < matches.length; i++) {
     const m1 = matches[i];
-    const m2 = matches[i + 1];
-    if (m2 && m1.home === m2.away && m1.away === m2.home) {
+    if (used.has(m1.id)) continue;
+    used.add(m1.id);
+    let m2 = null;
+    for (let j = i + 1; j < matches.length; j++) {
+      const cand = matches[j];
+      if (!used.has(cand.id) && cand.home === m1.away && cand.away === m1.home) {
+        m2 = cand;
+        break;
+      }
+    }
+    if (m2) {
+      used.add(m2.id);
       groups.push([m1, m2]);
-      i += 2;
     } else {
       groups.push([m1]);
-      i += 1;
     }
   }
   return groups;
