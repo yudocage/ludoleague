@@ -156,20 +156,27 @@
   td.pts { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 15px; color: var(--text); }
   tbody tr.leader td.pts { color: var(--gold); }
 
-  .round-block + .round-block { margin-top: 20px; }
-  .round-title {
+  .match-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 14px 16px;
+    margin-bottom: 10px;
+  }
+  .match-card:last-child { margin-bottom: 0; }
+  .match-index {
     font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px;
-    letter-spacing: .1em;
+    font-size: 10.5px;
+    letter-spacing: .08em;
     text-transform: uppercase;
     color: var(--muted-2);
-    margin-bottom: 8px;
+    margin-bottom: 10px;
   }
-  .match-card {
-    border-top: 1px solid var(--line);
-    padding: 12px 4px;
+  .leg:not(:last-child) {
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 14px;
+    padding-bottom: 14px;
   }
-  .round-block:first-of-type .match-card:first-child { border-top: none; }
   .match-teams {
     display: grid;
     grid-template-columns: 1fr auto 1fr;
@@ -179,7 +186,7 @@
   }
   .team { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .team.away { text-align: right; }
-  .team.winner { color: var(--gold); font-weight: 600; }
+  .team.winner { color: var(--gold); }
   .team svg.crown { margin-right: 4px; vertical-align: -1px; }
   .final-score {
     font-family: 'IBM Plex Mono', monospace;
@@ -476,35 +483,16 @@ function emptySets() {
 }
 
 function generateRoundRobin(teamNames, doubleRound) {
-  let list = teamNames.slice();
-  if (list.length % 2 !== 0) list.push(null); // bye
-  const n = list.length;
-  const rounds = [];
-  for (let r = 0; r < n - 1; r++) {
-    const roundMatches = [];
-    for (let i = 0; i < n / 2; i++) {
-      const home = list[i];
-      const away = list[n - 1 - i];
-      if (home !== null && away !== null) {
-        roundMatches.push(r % 2 === 0 ? { home, away } : { home: away, away: home });
-      }
-    }
-    rounds.push(roundMatches);
-    const last = list.pop();
-    list.splice(1, 0, last);
-  }
-  let allRounds = rounds;
-  if (doubleRound) {
-    const secondLeg = rounds.map(round => round.map(m => ({ home: m.away, away: m.home })));
-    allRounds = rounds.concat(secondLeg);
-  }
   const matches = [];
   let id = 0;
-  allRounds.forEach((round, ri) => {
-    round.forEach(m => {
-      matches.push({ id: 'm' + (id++), round: ri + 1, home: m.home, away: m.away, sets: emptySets(), place: '', date: '' });
-    });
-  });
+  for (let i = 0; i < teamNames.length; i++) {
+    for (let j = i + 1; j < teamNames.length; j++) {
+      matches.push({ id: 'm' + (id++), home: teamNames[i], away: teamNames[j], sets: emptySets(), place: '', date: '' });
+      if (doubleRound) {
+        matches.push({ id: 'm' + (id++), home: teamNames[j], away: teamNames[i], sets: emptySets(), place: '', date: '' });
+      }
+    }
+  }
   return matches;
 }
 
@@ -601,14 +589,19 @@ function renderStandings() {
   document.getElementById('standingsTable').innerHTML = `<div class="reveal">${html}</div>`;
 }
 
-function matchCardHtml(m) {
+function legHtml(m) {
   const { hSets, aSets, decided } = matchStats(m);
   const homeWin = decided && hSets > aSets;
   const awayWin = decided && aSets > hSets;
   const anyEntered = (m.sets || []).some(s => s.h !== '' || s.a !== '');
   const scoreLabel = anyEntered ? `${hSets}:${aSets}` : '– : –';
   const sets = m.sets && m.sets.length === 3 ? m.sets : emptySets();
-  const setsHtml = sets.map((s, i) => `<div class="set">
+  const s1w = setWinner(sets[0]);
+  const s2w = setWinner(sets[1]);
+  const decidedIn2 = s1w !== 0 && s2w !== 0 && s1w === s2w;
+  const thirdHasData = sets[2] && (sets[2].h !== '' || sets[2].a !== '');
+  const hideThird = decidedIn2 && !thirdHasData;
+  const setsHtml = sets.map((s, i) => `<div class="set"${i === 2 && hideThird ? ' style="display:none;"' : ''}>
       <input type="number" min="0" max="7" value="${s.h}" data-id="${m.id}" data-set="${i}" data-side="h" ${isAdmin ? '' : 'disabled'}>
       <span>:</span>
       <input type="number" min="0" max="7" value="${s.a}" data-id="${m.id}" data-set="${i}" data-side="a" ${isAdmin ? '' : 'disabled'}>
@@ -620,7 +613,7 @@ function matchCardHtml(m) {
       <span class="sched-icon">🗓</span><input type="text" placeholder="дата и время" class="${m.date ? 'filled' : ''}" value="${escapeHtml(m.date || '')}" data-id="${m.id}" data-field="date" ${isAdmin ? '' : 'disabled'}>
     </div>` : '';
   const crown = '<svg class="crown" viewBox="0 0 24 16" width="14" height="10"><path d="M2 14L0 4l5 3 5-6 5 6 5-3-2 10H2z" fill="var(--red)"/></svg>';
-  return `<div class="match-card" id="match-${m.id}">
+  return `<div class="leg" id="match-${m.id}">
     ${scheduleHtml}
     <div class="match-teams">
       <span class="team home${homeWin ? ' winner' : ''}">${homeWin ? crown : ''}${escapeHtml(m.home)}</span>
@@ -628,6 +621,32 @@ function matchCardHtml(m) {
       <span class="team away${awayWin ? ' winner' : ''}">${awayWin ? crown : ''}${escapeHtml(m.away)}</span>
     </div>
     <div class="sets-row">${setsHtml}</div>
+  </div>`;
+}
+
+function groupMatches(matches) {
+  const groups = [];
+  let i = 0;
+  while (i < matches.length) {
+    const m1 = matches[i];
+    const m2 = matches[i + 1];
+    if (m2 && m1.home === m2.away && m1.away === m2.home) {
+      groups.push([m1, m2]);
+      i += 2;
+    } else {
+      groups.push([m1]);
+      i += 1;
+    }
+  }
+  return groups;
+}
+
+function matchCardHtml(group, startIndex) {
+  const label = group.length === 2 ? `Матч ${startIndex} / Матч ${startIndex + 1}` : `Матч ${startIndex}`;
+  const legsHtml = group.map(m => legHtml(m)).join('');
+  return `<div class="match-card">
+    <div class="match-index">${label}</div>
+    ${legsHtml}
   </div>`;
 }
 
@@ -646,6 +665,15 @@ function updateMatchDisplay(match) {
   homeEl.innerHTML = (homeWin ? crown : '') + escapeHtml(match.home);
   awayEl.classList.toggle('winner', awayWin);
   awayEl.innerHTML = (awayWin ? crown : '') + escapeHtml(match.away);
+
+  const thirdSetEl = row.querySelectorAll('.set')[2];
+  if (thirdSetEl) {
+    const s1w = setWinner(match.sets[0]);
+    const s2w = setWinner(match.sets[1]);
+    const decidedIn2 = s1w !== 0 && s2w !== 0 && s1w === s2w;
+    const thirdHasData = match.sets[2] && (match.sets[2].h !== '' || match.sets[2].a !== '');
+    thirdSetEl.style.display = (decidedIn2 && !thirdHasData) ? 'none' : '';
+  }
 }
 
 function render() {
@@ -668,17 +696,9 @@ function render() {
 
   renderStandings();
 
-  const byRound = {};
-  state.matches.forEach(m => {
-    byRound[m.round] = byRound[m.round] || [];
-    byRound[m.round].push(m);
-  });
-  let fhtml = '';
-  Object.keys(byRound).sort((a, b) => a - b).forEach(r => {
-    fhtml += `<div class="round-block"><div class="round-title">Тур ${r}</div>`;
-    byRound[r].forEach(m => { fhtml += matchCardHtml(m); });
-    fhtml += '</div>';
-  });
+  const groups = groupMatches(state.matches);
+  let idx = 1;
+  const fhtml = groups.map(g => { const html = matchCardHtml(g, idx); idx += g.length; return html; }).join('');
   document.getElementById('fixturesList').innerHTML = `<div class="reveal">${fhtml}</div>`;
 
   document.querySelectorAll('.set input').forEach(inp => {
